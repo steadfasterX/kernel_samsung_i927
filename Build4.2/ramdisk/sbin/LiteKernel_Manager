@@ -1,0 +1,170 @@
+#!/sbin/busybox sh
+/sbin/busybox rm /data/LiteKernel/Service.log
+exec >>/data/LiteKernel/Service.log
+exec 2>&1
+
+WIFI_CONTROL="`cat /data/LiteKernel/WIFI_Control`"; 
+CPU_CONTROL="`cat /data/LiteKernel/CPU_Control`";
+GOVERNOR_FREQENCY_SLEEP_MAX="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_SLEEP_MAX`";
+GOVERNOR_FREQENCY_SLEEP_MIN="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_SLEEP_MIN`";
+GOVERNOR_FREQENCY_WAKE_MAX="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_WAKE_MAX`";
+GOVERNOR_FREQENCY_WAKE_MIN="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_WAKE_MIN`";
+GOVERNOR_FREQENCY_Preset1_MAX="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset1_MAX`";
+GOVERNOR_FREQENCY_Preset1_MIN="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset1_MIN`";
+GOVERNOR_FREQENCY_Preset2_MAX="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset2_MAX`";
+GOVERNOR_FREQENCY_Preset2_MIN="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset2_MIN`";
+GOVERNOR_FREQENCY_Preset3_MAX="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset3_MAX`";
+GOVERNOR_FREQENCY_Preset3_MIN="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset3_MIN`";
+GOVERNOR_FREQENCY_Preset4_MAX="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset4_MAX`";
+GOVERNOR_FREQENCY_Preset4_MIN="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset4_MIN`";
+GOVERNOR_FREQENCY_Preset5_MAX="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset5_MAX`";
+GOVERNOR_FREQENCY_Preset5_MIN="`cat /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset5_MIN`";
+WIFI_POWER_SAVE_THRESHOLD="`cat /data/LiteKernel/Advanced/WIFI_POWER_SAVE_THRESHOLD`";
+
+WIFI_OFF="0"
+RAN="1"
+
+# =========
+# Background process to check screen state
+# =========
+if [ "$WIFI_CONTROL" -ne "1" ] && [ "$CPU_CONTROL" -ne "1" ]; then
+echo "Background Process Disabled!";
+else
+while [ 1 ]
+do
+    AWAKE=`cat /sys/power/wait_for_fb_wake` # Script will sleep here until display goes on
+    if [ $AWAKE = "awake" ]; then
+
+if [ $RAN = "1" ]; then
+
+        echo 3000 > /proc/sys/vm/dirty_expire_centisecs;
+	echo 1000 > /proc/sys/vm/dirty_writeback_centisecs;
+
+# =========
+# CPU Frequency Control
+# =========	
+if [ "$CPU_CONTROL" -eq 1 ]; then
+	echo 1 > /sys/devices/system/cpu/cpu1/online;
+	echo $GOVERNOR_FREQENCY_WAKE_MAX > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
+	echo $GOVERNOR_FREQENCY_WAKE_MAX > /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq;
+	echo $GOVERNOR_FREQENCY_WAKE_MIN > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
+	echo $GOVERNOR_FREQENCY_WAKE_MIN > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq;
+	echo "CPU Frequency Control: Wake!"
+fi
+	BATTERY=`cat /sys/devices/platform/sec-battery/power_supply/battery/capacity`;
+
+if [ "$WIFI_CONTROL" -eq "1" ]; then
+			echo "Wifi Control: Battery : $BATTERY Threshold $WIFI_POWER_SAVE_THRESHOLD"
+if [ "$BATTERY" -lt "$WIFI_POWER_SAVE_THRESHOLD" ]; then
+		if [ "$WIFI_OFF" -eq "1" ]; then
+			echo "Wifi Control: Leaving Wifi off to save power!"
+		fi
+else
+		if [ "$WIFI_OFF" -eq "1" ]; then
+			svc wifi enable
+			echo "Wifi Control: Wifi Enabled!"
+		fi
+fi
+fi
+
+if [ "$CPU_CONTROL" -eq "1" ]; then
+	sleep 2
+fi
+
+# Make Interactive a little Slower to Ramp up
+echo 30000 > /sys/devices/system/cpu/cpufreq/interactive/timer_rate;
+echo 10000 > /sys/devices/system/cpu/cpufreq/interactive/min_sample_time;
+
+	if [ "$BATTERY" -gt "80" ]; then
+if [ "$CPU_CONTROL" -eq "1" ]; then
+		echo $GOVERNOR_FREQENCY_Preset5_MAX > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
+		echo $GOVERNOR_FREQENCY_Preset5_MAX > /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq;
+		echo $GOVERNOR_FREQENCY_Preset5_MIN > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
+		echo $GOVERNOR_FREQENCY_Preset5_MIN > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq;
+		echo "CPU Frequency Control: Preset 5!"
+fi
+	fi
+	if [ "$BATTERY" -gt "60" -a "$BATTERY" -lt "80" ]; then
+if [ "$CPU_CONTROL" -eq "1" ]; then
+		echo $GOVERNOR_FREQENCY_Preset4_MAX > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
+		echo $GOVERNOR_FREQENCY_Preset4_MAX > /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq;
+		echo $GOVERNOR_FREQENCY_Preset4_MIN > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
+		echo $GOVERNOR_FREQENCY_Preset4_MIN > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq;
+		echo "CPU Frequency Control: Preset 4!"
+fi
+	fi
+	if [ "$BATTERY" -gt "50" -a "$BATTERY" -lt "60" ]; then
+if [ "$CPU_CONTROL" -eq "1" ]; then
+		echo $GOVERNOR_FREQENCY_Preset3_MAX > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
+		echo $GOVERNOR_FREQENCY_Preset3_MAX > /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq;
+		echo $GOVERNOR_FREQENCY_Preset3_MIN > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
+		echo $GOVERNOR_FREQENCY_Preset3_MIN > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq;
+		echo "CPU Frequency Control: Preset 3!"
+fi
+	fi
+	if [ "$BATTERY" -gt "25" -a "$BATTERY" -lt "50" ]; then
+if [ "$CPU_CONTROL" -eq "1" ]; then
+		echo $GOVERNOR_FREQENCY_Preset2_MAX > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
+		echo $GOVERNOR_FREQENCY_Preset2_MAX > /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq;
+		echo $GOVERNOR_FREQENCY_Preset2_MIN > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
+		echo $GOVERNOR_FREQENCY_Preset2_MIN > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq;
+		echo "CPU Frequency Control: Preset 2!"
+fi
+	fi
+	if [ "$BATTERY" -lt "25" ]; then
+if [ "$CPU_CONTROL" -eq "1" ]; then
+		echo $GOVERNOR_FREQENCY_Preset1_MAX > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
+		echo $GOVERNOR_FREQENCY_Preset1_MAX > /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq;
+		echo $GOVERNOR_FREQENCY_Preset1_MIN > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
+		echo $GOVERNOR_FREQENCY_Preset1_MIN > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq;
+		echo "CPU Frequency Control: Preset 1!"
+fi
+	fi
+RAN="2"
+fi	
+
+    fi
+    SLEEPING=`cat /sys/power/wait_for_fb_sleep` # Script will sleep here until display goes off
+    if [ $SLEEPING = "sleeping" ]; then
+
+if [ $RAN = "2" ]; then
+
+if [ "$CPU_CONTROL" -eq "1" ]; then
+	echo $GOVERNOR_FREQENCY_SLEEP_MAX > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
+	echo $GOVERNOR_FREQENCY_SLEEP_MIN > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
+	echo "CPU Frequency Control: Sleep!"
+fi
+
+        echo 40000 > /proc/sys/vm/dirty_expire_centisecs;
+        echo 60000 > /proc/sys/vm/dirty_writeback_centisecs;
+
+        #free pagecache, dentries and inodes:
+        echo 3 > /proc/sys/vm/drop_caches
+			
+# =========
+# Kill WIFI if below Bandwidth Threshold
+# =========
+if [ "$WIFI_CONTROL" -eq "1" ]; then
+	if [ -f /sys/class/net/wlan0/statistics/rx_bytes ];
+	then
+		rx_bytes1=`cat /sys/class/net/wlan0/statistics/rx_bytes`;
+		sleep 1;
+		rx_bytes2=`cat /sys/class/net/wlan0/statistics/rx_bytes`;
+		rx_bytes3=$(($rx_bytes2-$rx_bytes1))
+    	if [ "$rx_bytes3" -lt 2000 ]; then
+		echo "$rx_bytes3 : Less then 2000 bytes traffic"
+		echo "Wifi Control: Wifi Disabled!"
+		svc wifi disable
+		WIFI_OFF="1"
+    	else
+		echo "$rx_bytes3 : More then 2000 bytes traffic"
+		echo "Wifi Control: Wifi in use..."
+    	fi
+	fi
+fi
+RAN="1"
+fi
+
+    fi    
+done
+fi

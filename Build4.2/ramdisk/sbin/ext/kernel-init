@@ -1,0 +1,76 @@
+#!/sbin/busybox sh
+KERNELVERSION="`cat /proc/version`"; 
+CURRENTVERSION="`cat /data/LiteKernel/version`";
+if [ "$KERNELVERSION" != "$CURRENTVERSION" ]; then
+echo "Litekernel Updated! Cleaning Config Directory!"
+rm -rf /data/LiteKernel
+fi
+
+if [ -e /data/LiteKernel/Advanced ]; then
+
+echo "Litekernel Initialized!"
+
+else
+
+echo "Setting up Kernel..."
+
+mkdir -p /data/LiteKernel
+mkdir -p /data/LiteKernel/BLN
+mkdir -p /data/LiteKernel/Advanced
+ 
+ln -s /sys/class/misc/backlightnotification/enabled /data/LiteKernel/BLN/enabled
+ln -s /sys/class/misc/backlightnotification/in_kernel_blink /data/LiteKernel/BLN/in_kernel_blink
+ln -s /sys/class/misc/backlightnotification/blink_interval /data/LiteKernel/BLN/blink_interval
+ln -s /sys/class/misc/backlightnotification/blink_control /data/LiteKernel/BLN/blink_control
+ln -s /sys/class/misc/backlightnotification/blink_maxtime /data/LiteKernel/BLN/blink_maxtime
+
+touch /data/LiteKernel/WIFI_Control
+touch /data/LiteKernel/CPU_Control
+touch /data/LiteKernel/Kernel_Tweaks
+touch /data/LiteKernel/General_Tweaks
+touch /data/LiteKernel/FixAlignment
+touch /data/LiteKernel/version
+touch /data/LiteKernel/MTP
+touch /data/LiteKernel/Advanced/MEMORY_CLEAN
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_SLEEP_MAX
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_SLEEP_MIN
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_WAKE_MAX
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_WAKE_MIN
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset1_MAX
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset1_MIN
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset2_MAX 
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset2_MIN
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset3_MAX 
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset3_MIN
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset4_MAX
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset4_MIN
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset5_MAX
+touch /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset5_MIN
+touch /data/LiteKernel/Advanced/WIFI_POWER_SAVE_THRESHOLD
+echo "0" > /data/LiteKernel/WIFI_Control
+echo "1" > /data/LiteKernel/CPU_Control
+echo "0" > /data/LiteKernel/Kernel_Tweaks
+echo "1" > /data/LiteKernel/General_Tweaks
+echo "0" > /data/LiteKernel/FixAlignment
+echo "1" > /data/LiteKernel/MTP
+echo "0" > /data/LiteKernel/Advanced/MEMORY_CLEAN
+echo "608000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_SLEEP_MAX
+echo "216000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_SLEEP_MIN
+echo "1200000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_WAKE_MAX
+echo "456000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_WAKE_MIN
+echo "608000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset1_MAX
+echo "216000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset1_MIN
+echo "816000"  >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset2_MAX
+echo "216000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset2_MIN
+echo "912000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset3_MAX
+echo "216000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset3_MIN
+echo "1000000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset4_MAX
+echo "216000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset4_MIN
+echo "1000000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset5_MAX
+echo "312000" >  /data/LiteKernel/Advanced/GOVERNOR_FREQENCY_Preset5_MIN
+echo "25" >  /data/LiteKernel/Advanced/WIFI_POWER_SAVE_THRESHOLD
+echo "$KERNELVERSION" > /data/LiteKernel/version
+
+ln -s /sbin/zipalign /system/xbin/zipalign
+echo "Litekernel Initialized!"
+fi

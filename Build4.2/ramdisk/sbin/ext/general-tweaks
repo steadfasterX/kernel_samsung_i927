@@ -1,0 +1,103 @@
+#!/sbin/busybox sh
+
+echo 1 > /sys/class/timed_output/vibrator/enable
+
+MTPMODE="`cat /data/LiteKernel/MTP`"; 
+if [ "$MTPMODE" -eq 1 ]; then
+setprop persist.sys.usb.config mtp,adb
+else
+setprop persist.sys.usb.config mass_storage,adb
+fi
+
+# Change CPU step count
+#echo 1200 1000 608 456 216 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies
+#echo 1200 1000 608 456 216 > /sys/devices/system/cpu/cpu1/cpufreq/scaling_available_frequencies 
+
+# Memory Tweaks
+chmod 777 /sys/module/lowmemorykiller/parameters/adj
+chmod 777 /sys/module/lowmemorykiller/parameters/minfree
+echo "0,3,6,10,12,15" > /sys/module/lowmemorykiller/parameters/adj
+echo "2048,3584,35584,39680,43776,48128" > /sys/module/lowmemorykiller/parameters/minfree
+echo 0 > /sys/module/lowmemorykiller/parameters/debug_level;
+echo 64 > /sys/module/lowmemorykiller/parameters/cost;
+
+sysctl -w vm.min_free_kbytes=28467;
+sysctl -w vm.oom_kill_allocating_task=0;
+sysctl -w vm.panic_on_oom=0;
+sysctl -w vm.overcommit_memory=1;
+sysctl -w vm.swappiness=20;
+sysctl -w kernel.random.read_wakeup_threshold=1376;
+
+setprop dalvik.vm.heapgrowthlimit 132m
+setprop dalvik.vm.heapsize 132m
+setprop persist.sys.purgeable_assets 1
+
+# Battery Tweaks
+setprop pm.sleep_mode 1
+setprop wifi.supplicant_scan_interval 120
+
+# GPU UI Render
+setprop debug.performance.tuning 1
+setprop video.accelerate.hw 1
+setprop debug.sf.hw 1
+
+# I/O Tweaks
+echo 128 > /sys/devices/virtual/bdi/7:0/read_ahead_kb
+echo 128 > /sys/devices/virtual/bdi/7:1/read_ahead_kb
+echo 128 > /sys/devices/virtual/bdi/7:2/read_ahead_kb
+echo 128 > /sys/devices/virtual/bdi/7:3/read_ahead_kb
+echo 128 > /sys/devices/virtual/bdi/7:4/read_ahead_kb
+echo 128 > /sys/devices/virtual/bdi/7:5/read_ahead_kb
+echo 128 > /sys/devices/virtual/bdi/7:6/read_ahead_kb
+echo 128 > /sys/devices/virtual/bdi/7:7/read_ahead_kb
+echo 97 > /sys/devices/virtual/bdi/179:0/max_ratio
+echo 97 > /sys/devices/virtual/bdi/default/max_ratio
+echo "2048" > /sys/devices/virtual/bdi/default/read_ahead_kb
+echo "2048" > /sys/devices/virtual/bdi/179:0/read_ahead_kb;
+echo "2048" > /sys/devices/virtual/bdi/179:16/read_ahead_kb;
+echo "2048" > /sys/devices/virtual/bdi/179:24/read_ahead_kb;
+
+if [ ! -f /sys/block/mmcblk0/queue/read_ahead_kb]
+then
+sleep 60
+fi
+echo "2048" > /sys/block/mmcblk0/queue/read_ahead_kb
+if [ ! -f /sys/block/mmcblk1/queue/read_ahead_kb]
+then
+sleep 60
+fi
+echo "2048" > /sys/block/mmcblk1/queue/read_ahead_kb
+if [ ! -f /sys/devices/virtual/bdi/179:0/read_ahead_kb]
+then
+sleep 60
+fi
+
+
+# ==============================================================
+# VFS, VM settings
+# ==============================================================
+
+# Don't optimize swappiness. Swappiness does nothing if you don't have ZCACHE 
+#echo 0 > /proc/sys/vm/swappiness # 70 for zram, Talon # 0 for CM7 / MIUI (no zram yet)
+
+#sysctl -w vm.page-cluster=3;
+#sysctl -w vm.laptop_mode=0;
+#sysctl -w vm.dirty_expire_centisecs=3000;
+#sysctl -w vm.dirty_writeback_centisecs=500;
+#sysctl -w vm.dirty_background_ratio=40;
+#sysctl -w vm.dirty_ratio=80;
+#sysctl -w vm.vfs_cache_pressure=10;
+#sysctl -w vm.overcommit_memory=1;
+#sysctl -w vm.oom_kill_allocating_task=0;
+
+# =========
+# TWEAKS: adding zram swap in RAM
+# =========
+#echo $((96*1024*1024)) > /sys/block/zram0/disksize
+#mknod /dev/zram0 b 253 0
+#mkswap /dev/zram0
+#swapon /dev/zram0
+# ZRAM
+#busybox mkswap /dev/block/zram0
+#echo 134217728 >  /sys/block/zram0/disksize
+#busybox swapon /dev/block/zram0

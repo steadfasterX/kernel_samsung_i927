@@ -1,0 +1,6 @@
+#!/sbin/busybox sh
+
+rm -rf /sbin/ext
+
+#/sbin/busybox mount -o remount,ro / /
+
