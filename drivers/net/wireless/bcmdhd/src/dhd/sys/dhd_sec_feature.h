@@ -50,6 +50,7 @@
 #define SDIO_ISR_THREAD
 #define USE_CID_CHECK
 #define WRITE_MACADDR
+#define READ_MACADDR
 #ifdef RSSI_OFFSET
 #undef RSSI_OFFSET
 #define RSSI_OFFSET (-2)
