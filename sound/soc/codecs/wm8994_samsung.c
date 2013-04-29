@@ -39,6 +39,14 @@
 #include "wm8994_samsung.h"
 #include <mach/pinmux.h>
 #include <linux/timer.h>
+#if defined(CONFIG_MACH_N1_CHN)
+#include <mach/gpio-n1.h>
+extern int g_headset_status;
+#endif
+
+#ifdef CONFIG_SND_VOODOO
+#include "wm8994_voodoo.h"
+#endif
 
 #define WM8994_VERSION "0.1"
 #define SUBJECT "wm8994_samsung.c"
@@ -187,6 +195,10 @@ int wm8994_write(struct snd_soc_codec *codec, unsigned int reg,
 	 * D15..D9 WM8993 register offset
 	 * D8...D0 register data
 	 */
+
+#ifdef CONFIG_SND_VOODOO
+	value = voodoo_hook_wm8994_write(codec, reg, value);
+#endif
 
 	data[0] = (reg & 0xff00) >> 8;
 	data[1] = reg & 0x00ff;
@@ -680,7 +692,9 @@ static int wm8994_set_path(struct snd_kcontrol *kcontrol,
 		DEBUG_LOG_ERR("Unknown Path");
 		return -ENODEV;
 	}
-
+#if defined(CONFIG_MACH_N1_CHN)
+	DEBUG_LOG("get state[GPIO_DET_3_5]= %d, g_headset_status=%d",gpio_get_value(GPIO_DET_3_5),g_headset_status);
+#endif 	
 	wm8994->dap_state = dap_connection_codec_slave;
 	switch (path_num) {
 	case OFF:
@@ -3987,6 +4001,10 @@ static int wm8994_codec_probe(struct snd_soc_codec *codec)
 		dev_err(codec->dev, "failed to initialize WM8994\n");
 		goto err_init;
 	}
+
+#ifdef CONFIG_SND_VOODOO
+	voodoo_hook_wm8994_pcm_probe(codec);
+#endif
 
 	return ret;
 
