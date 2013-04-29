@@ -575,4 +575,10 @@ config KEYBOARD_CYPRESS_TOUCH
       To compile this driver as a module, choose M here: the
       module will be called mcs_touchkey.
 
+config TOUCHKEY_BLN_CYPRESS
+	bool "BLN Support for Cypress touchkeys."
+	depends on KEYBOARD_CYPRESS_TOUCH
+	help
+	  BLN support.
+
 endif
