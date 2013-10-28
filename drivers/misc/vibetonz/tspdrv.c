@@ -96,55 +96,100 @@ static int g_nMajor;
 #include "VibeOSKernelLinuxTime.c"
 #endif
 
-/* strength modification */
-unsigned short int pwm_val = 50;
 
-static ssize_t pwm_val_show(struct device *dev, struct device_attribute *attr,
+#define PWM_DEFAULT 50
+#define PWM_MIN 0
+#define PWM_MAX 100
+#define PWM_THRESHOLD 97
+
+/* strength modification */
+unsigned short int pwm_value = PWM_DEFAULT;
+
+static ssize_t pwm_value_show(struct device *dev, struct device_attribute *attr,
                               char *buf)
 {
 	int count;
 
-	count = sprintf(buf, "%hu\n", pwm_val);
-	pr_debug("[VIB] pwm_val: %hu\n", pwm_val);
+	count = sprintf(buf, "%hu\n", pwm_value);
+	pr_debug("[VIB] pwm_value: %hu\n", pwm_value);
 
 	return count;
 }
 
-ssize_t pwm_val_store(struct device *dev, struct device_attribute *attr,
+ssize_t pwm_value_store(struct device *dev, struct device_attribute *attr,
                         const char *buf, size_t size)
 {
-	if (kstrtoul(buf, 0, (unsigned long int*)&pwm_val))
-		pr_err("[VIB] %s: error on storing pwm_val\n", __func__);
+	if (kstrtoul(buf, 0, (unsigned long int*)&pwm_value))
+		pr_err("[VIB] %s: error on storing pwm_value\n", __func__);
 
-	pr_info("[VIB] %s: pwm_val=%hu\n", __func__, pwm_val);
+	pr_info("[VIB] %s: pwm_value=%hu\n", __func__, pwm_value);
 
 	/* make sure new pwm duty is in range */
-	if (pwm_val > 100)
-		pwm_val = 100;
-	else if (pwm_val < 0)
-		pwm_val = 0;
+	if (pwm_value > PWM_MAX)
+		pwm_value = PWM_MAX;
+	else if (pwm_value < PWM_MIN)
+		pwm_value = PWM_MIN;
 
 	return size;
 }
 
-static DEVICE_ATTR(pwm_val, S_IRUGO | S_IWUSR, pwm_val_show, pwm_val_store);
+static DEVICE_ATTR(pwm_value, S_IRUGO | S_IWUSR, pwm_value_show, pwm_value_store);
 
-static int create_vibrator_sysfs(void)
+
+static ssize_t pwm_min_show(struct device *dev,
+                            struct device_attribute *attr, char *buf)
 {
-	int ret;
-	struct kobject *vibrator_kobj;
-	vibrator_kobj = kobject_create_and_add("vibrator", NULL);
-	if (unlikely(!vibrator_kobj))
-		return -ENOMEM;
+        int count;
 
-	ret = sysfs_create_file(vibrator_kobj, &dev_attr_pwm_val.attr);
-	if (unlikely(ret < 0)) {
-		pr_err("[VIB] sysfs_create_file failed: %d\n", ret);
-		return ret;
-	}
+        count = sprintf(buf, "%d\n",PWM_MIN);
+        pr_info("vibrator: pwm min value: %d\n", PWM_MIN);
 
-	return 0;
+        return count;
 }
+
+static DEVICE_ATTR(pwm_min, S_IRUGO | S_IWUSR,pwm_min_show, NULL);
+
+static ssize_t pwm_max_show(struct device *dev,
+                            struct device_attribute *attr, char *buf)
+{
+        int count;
+
+        count = sprintf(buf, "%d\n",PWM_MAX);
+        pr_info("vibrator: pwm max value: %d\n", PWM_MAX);
+
+        return count;
+}
+
+static DEVICE_ATTR(pwm_max, S_IRUGO | S_IWUSR,pwm_max_show, NULL);
+
+static ssize_t pwm_default_show(struct device *dev,
+                            struct device_attribute *attr, char *buf)
+{
+        int count;
+
+        count = sprintf(buf, "%d\n",PWM_DEFAULT);
+        pr_info("vibrator: pwm default value: %d\n", PWM_DEFAULT);
+
+        return count;
+}
+
+static DEVICE_ATTR(pwm_default, S_IRUGO | S_IWUSR,pwm_default_show, NULL);
+
+
+static ssize_t pwm_threshold_show(struct device *dev,
+                            struct device_attribute *attr, char *buf)
+{
+        int count;
+
+        count = sprintf(buf, "%d\n",PWM_THRESHOLD);
+        pr_info("vibrator: pwm threshold value: %d\n", PWM_THRESHOLD);
+
+        return count;
+}
+
+
+static DEVICE_ATTR(pwm_threshold, S_IRUGO | S_IWUSR,pwm_threshold_show, NULL);
+
 
 /* timed_output */
 static struct hrtimer g_autoTimer;
@@ -196,7 +241,7 @@ static void enable_vibetonz_from_user(struct timed_output_dev *dev, int value)
 		if (value > MAX_TIMEOUT)
 			value = MAX_TIMEOUT;
 
-		strength = DEFAULT_STRENGTH * pwm_val / 100;
+		strength = DEFAULT_STRENGTH * pwm_value / 100;
 
 		if (strength != 0) {
 			ImmVibeSPI_ForceOut_AmpEnable(0);
@@ -221,11 +266,37 @@ static void vibetonz_start(void)
 	g_autoTimer.function = autotimer_stop;
 
 	INIT_WORK(&vibrator_timeout, vibrator_timeout_work);
-
 	ret = timed_output_dev_register(&timed_output_vt);
 
 	if (ret)
 		DbgOut((KERN_ERR "tspdrv: timed_output_dev_register failed\n"));
+
+	ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_value);
+	if (unlikely(ret < 0)) {
+		pr_err("[VIB] device_create_file failed: %d\n", ret);
+		return ret;
+	}
+	ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_min);
+	if (unlikely(ret < 0)) {
+		pr_err("[VIB] device_create_file failed: %d\n", ret);
+		return ret;
+	}
+	ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_max);
+	if (unlikely(ret < 0)) {
+		pr_err("[VIB] device_create_file failed: %d\n", ret);
+		return ret;
+	}
+	ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_default);
+	if (unlikely(ret < 0)) {
+		pr_err("[VIB] device_create_file failed: %d\n", ret);
+		return ret;
+	}
+	ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_threshold);
+	if (unlikely(ret < 0)) {
+		pr_err("[VIB] device_create_file failed: %d\n", ret);
+		return ret;
+	}
+
 }
 
 /* File IO */
@@ -397,7 +468,6 @@ int init_module(void)
 	}
 
 	vibetonz_start();
-	create_vibrator_sysfs();
 
 	return 0;
 err_platform_drv_reg:
