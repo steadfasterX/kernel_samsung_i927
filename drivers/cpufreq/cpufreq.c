@@ -30,8 +30,10 @@
 #include <linux/mutex.h>
 #include <linux/syscore_ops.h>
 #include <linux/pm_qos_params.h>
-
 #include <trace/events/power.h>
+#ifdef CONFIG_CPU_OVERCLOCK
+#include <linux/cpuoc.h>
+#endif
 
 /* Description of __CPUFREQ_KOBJ_DEL_DEADLOCK_FIX
  *
@@ -52,6 +54,17 @@
 
 #ifdef __CPUFREQ_KOBJ_DEL_DEADLOCK_FIX
 static DEFINE_PER_CPU(struct mutex, cpufreq_remove_mutex);
+#endif
+
+#ifdef CONFIG_CPU_OVERCLOCK
+/* Initial implementation of userspace voltage control */
+#define FREQCOUNT 12
+#define CPUMVMAX 1300
+#define CPUMVMIN 770
+int cpufrequency[FREQCOUNT] = { 1400000, 1300000, 1200000, 1000000, 912000, 816000, 760000, 608000, 456000, 312000, 216000 };
+//*int cpuvoltage[FREQCOUNT] = { 1225, 1175, 1125, 1125, 1100, 1050, 1000, 975, 900, 825, 770, 770 };
+int cpuvoltage[FREQCOUNT] = { 1225, 1200, 1125, 1050, 1000, 950, 925, 900, 825, 775, 770 };
+int cpuuvoffset[FREQCOUNT] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 #endif
 
 /**
@@ -611,7 +624,48 @@ static ssize_t show_bios_limit(struct cpufreq_policy *policy, char *buf)
 	}
 	return sprintf(buf, "%u\n", policy->cpuinfo.max_freq);
 }
+#ifdef CONFIG_CPU_OVERCLOCK
+static ssize_t show_frequency_voltage_table(struct cpufreq_policy *policy, char *buf)
+{
+char *table = buf;
+int i;
+for (i = 0; i < FREQCOUNT; i++)
+table += sprintf(table, "%d %d %d\n", cpufrequency[i], cpuvoltage[i], (cpuvoltage[i]-cpuuvoffset[i])); // TODO: Should be frequency, default voltage, current voltage
+return table - buf;
+}
 
+static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
+{
+char *table = buf;
+int i;
+
+table += sprintf(table, "%d", cpuuvoffset[0]);
+for (i = 1; i < FREQCOUNT - 1; i++)
+{
+table += sprintf(table, " %d", cpuuvoffset[i]);
+}
+table += sprintf(table, " %d\n", cpuuvoffset[FREQCOUNT - 1]);
+
+return table - buf;
+}
+
+static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_t count)
+{
+int tmptable[FREQCOUNT];
+int i;
+unsigned int ret = sscanf(buf, "%d %d %d %d %d %d %d %d %d %d %d %d %d", &tmptable[0], &tmptable[1], &tmptable[2], &tmptable[3], &tmptable[4], &tmptable[5], &tmptable[6], &tmptable[7], &tmptable[8], &tmptable[9], &tmptable[10], &tmptable[11]);
+if (ret != FREQCOUNT)
+return -EINVAL;
+for (i = 0; i < FREQCOUNT; i++)
+{
+if ((cpuvoltage[i]-tmptable[i]) > CPUMVMAX || (cpuvoltage[i]-tmptable[i]) < CPUMVMIN) // Keep within constraints
+return -EINVAL;
+else
+cpuuvoffset[i] = tmptable[i];
+}
+return count;
+}
+#endif
 cpufreq_freq_attr_ro_perm(cpuinfo_cur_freq, 0400);
 cpufreq_freq_attr_ro(cpuinfo_min_freq);
 cpufreq_freq_attr_ro(cpuinfo_max_freq);
@@ -622,10 +676,16 @@ cpufreq_freq_attr_ro(scaling_cur_freq);
 cpufreq_freq_attr_ro(bios_limit);
 cpufreq_freq_attr_ro(related_cpus);
 cpufreq_freq_attr_ro(affected_cpus);
+#ifdef CONFIG_CPU_OVERCLOCK
+cpufreq_freq_attr_ro(frequency_voltage_table);
+#endif
 cpufreq_freq_attr_rw(scaling_min_freq);
 cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
+#ifdef CONFIG_CPU_OVERCLOCK
+cpufreq_freq_attr_rw(UV_mV_table);
+#endif
 cpufreq_freq_attr_ro(policy_min_freq);
 cpufreq_freq_attr_ro(policy_max_freq);
 
@@ -637,12 +697,18 @@ static struct attribute *default_attrs[] = {
 	&scaling_max_freq.attr,
 	&affected_cpus.attr,
 	&related_cpus.attr,
+	#ifdef CONFIG_CPU_OVERCLOCK
+	&frequency_voltage_table.attr,
+	#endif
 	&scaling_governor.attr,
 	&scaling_driver.attr,
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
 	&policy_min_freq.attr,
 	&policy_max_freq.attr,
+	#ifdef CONFIG_CPU_OVERCLOCK
+	&UV_mV_table.attr,
+	#endif
 	NULL
 };
 
@@ -1029,6 +1095,7 @@ static int cpufreq_add_dev(struct sys_device *sys_dev)
 #endif
 	if (!found)
 		policy->governor = CPUFREQ_DEFAULT_GOVERNOR;
+
 	/* call driver. From then on the cpufreq must be able
 	 * to accept all calls to ->verify and ->setpolicy for this CPU
 	 */

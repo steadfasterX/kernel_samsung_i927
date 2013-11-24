@@ -38,6 +38,12 @@
 #include "board.h"
 #include "clock.h"
 #include "dvfs.h"
+#ifdef CONFIG_CPU_OVERCLOCK
+#include <linux/cpuoc.h>
+#define FREQCOUNT 13
+extern int cpufrequency[FREQCOUNT];
+extern int cpuuvoffset[FREQCOUNT];
+#endif
 
 #define DVFS_RAIL_STATS_BIN	25
 #define DVFS_RAIL_STATS_SCALE	2
@@ -216,7 +222,11 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 			rail->updating = false;
 		}
 		if (ret) {
+			#ifdef CONFIG_CPU_OVERCLOCK
+			pr_err("Failed to set dvfs regulator %s to %d (max %d)\n", rail->reg_id, rail->new_millivolts, rail->max_millivolts);
+			#else
 			pr_err("Failed to set dvfs regulator %s\n", rail->reg_id);
+			#endif
 			goto out;
 		}
 
@@ -329,7 +339,11 @@ static inline unsigned long *dvfs_get_freqs(struct dvfs *d)
 static int
 __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 {
+	#ifdef CONFIG_CPU_OVERCLOCK
+	int i = 0, j = 0, mvoffset = 0;
+	#else
 	int i = 0;
+	#endif
 	int ret;
 	unsigned long *freqs = dvfs_get_freqs(d);
 
@@ -354,9 +368,20 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 				" %s\n", d->millivolts[i], d->clk_name);
 			return -EINVAL;
 		}
-		d->cur_millivolts = d->millivolts[i];
-	}
+		#ifdef CONFIG_CPU_OVERCLOCK
+		if (strcmp(d->clk_name, "cpu") == 0)
 
+    		{
+      			while (j < FREQCOUNT && (rate / 1000) < cpufrequency[j]) // TODO: Make more robust
+        		j++;
+      			mvoffset = cpuuvoffset[j];
+    		}
+    			else mvoffset = 0;
+			d->cur_millivolts = d->millivolts[i] - mvoffset;
+		#else
+		d->cur_millivolts = d->millivolts[i];
+		#endif
+		}
 	d->cur_rate = rate;
 
 	ret = dvfs_rail_update(d->dvfs_rail);
