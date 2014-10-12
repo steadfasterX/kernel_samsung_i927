@@ -37,6 +37,11 @@
 #include "modem_link_device_hsic.h"
 #include "modem_utils.h"
 
+/*grzwolf-beg*/
+   int g_timeout = 0;
+/*grzwolf-end*/
+
+
 static struct modem_ctl *if_usb_get_modemctl(struct link_pm_data *pm_data);
 static int link_pm_runtime_get_active(struct link_pm_data *pm_data);
 static int usb_tx_urb_with_skb(struct usb_device *usbdev, struct sk_buff *skb,
@@ -253,7 +258,7 @@ static void usb_rx_complete(struct urb *urb)
 		switch (pipe_data->format) {
 		case IF_USB_FMT_EP:
 			if (usb_ld->if_usb_is_main) {
-				/* pr_urb("IPC-RX", urb); */
+				pr_urb("IPC-RX", urb);
 				iod_format = IPC_FMT;
 			} else {
 				iod_format = IPC_BOOT;
@@ -477,10 +482,8 @@ static int _usb_tx_work(struct sk_buff *skb)
 		return -ENOENT;
 	}
 
-#if 0
 	if (iod->format == IPC_FMT && usb_ld->if_usb_is_main)
 		pr_skb("IPC-TX", skb);
-#endif
 
 	if (iod->format == IPC_RAW)
 		mif_debug("TX[RAW]\n");
@@ -700,17 +703,11 @@ static void link_pm_reconnect_work(struct work_struct *work)
 					link_reconnect_work.work);
 	struct modem_ctl *mc = if_usb_get_modemctl(pm_data);
 
-	mif_info("\n");
-
-	if (!mc || pm_data->usb_ld->if_usb_connected) {
-		mif_err("mc or if_usb_connected is invalid\n");
+	if (!mc || pm_data->usb_ld->if_usb_connected)
 		return;
-	}
 
-	if (pm_data->usb_ld->ld.com_state != COM_ONLINE) {
-		mif_err("com_state is not COM_ONLINE\n");
+	if (pm_data->usb_ld->ld.com_state != COM_ONLINE)
 		return;
-	}
 
 	if (pm_data->link_reconnect_cnt--) {
 		if (mc->phone_state == STATE_ONLINE &&
@@ -1016,14 +1013,30 @@ static int if_usb_suspend(struct usb_interface *intf, pm_message_t message)
 	if (!devdata->disconnected && devdata->state == STATE_RESUMED) {
 		usb_kill_urb(devdata->urb);
 		devdata->state = STATE_SUSPENDED;
+/*grzwolf-beg*/
+                mif_info("if_usb_supend usb_kill_urb\n");
+/*grzwolf-end*/
 	}
 
 	devdata->usb_ld->suspended++;
 
+/*grzwolf-beg*/
 	if (devdata->usb_ld->suspended == LINKPM_DEV_NUM) {
 		mif_info("[if_usb_suspended]\n");
 		wake_lock_timeout(&pm_data->l2_wake, msecs_to_jiffies(50));
-	}
+//	}
+//	if ( devdata->usb_ld->suspended == LINKPM_DEV_NUM ) {
+//           g_timeout++;
+//           if ( (g_timeout % 2) != 0 ) {  // g_timeout is odd number  
+//              mif_info("[if_usb_suspended] - wake_lock_timeout sent\n"); 
+//  	      wake_lock_timeout(&pm_data->l2_wake, msecs_to_jiffies(50));
+//           } else {
+//              mif_info("[if_usb_suspended] - wake_lock_timeout suppressed\n"); 
+//           } 
+	} else {
+           mif_info("if_usb_supend NO SUSPEND: %i\t%i\n", devdata->usb_ld->suspended, LINKPM_DEV_NUM);
+        }
+/*grzwolf-end*/
 	return 0;
 }
 
@@ -1090,7 +1103,7 @@ static void if_usb_disconnect(struct usb_interface *intf)
 	dev = &devdata->usb_ld->usbdev->dev;
 	ppdev = dev->parent->parent;
 	pm_runtime_disable(dev);
-	pm_runtime_forbid(ppdev); /*ehci*/
+	pm_runtime_disable(ppdev); /*ehci*/
 
 	devdata->usb_ld->if_usb_connected = 0;
 
