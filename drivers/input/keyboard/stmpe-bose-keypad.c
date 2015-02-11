@@ -317,8 +317,9 @@ if(system_rev >= BOARD_REV06){
 			schedule_delayed_work(&keypad->full_chg_work, HZ/10);  // after 100 ms
 			return IRQ_HANDLED;
 		} else if ( iSta_high == EARJACK_DET35_INT ) {
-		/* earjack handler */
-		sec_jack_detect_irq();
+		/* DISABLED BY xdajog
+		 earjack handler 
+		sec_jack_detect_irq();*/
 		return IRQ_HANDLED;
 	}
 }

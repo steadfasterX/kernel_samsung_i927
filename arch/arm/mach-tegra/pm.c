@@ -79,6 +79,9 @@
 #include "dvfs.h"
 #include "cpu-tegra.h"
 
+// added by xdajog:
+extern int Is_call_active(void);
+
 struct suspend_context {
 	/*
 	 * The next 7 values are referenced by offset in __restart_plls
@@ -1061,7 +1064,7 @@ static struct kobject *suspend_kobj;
 
 static int tegra_pm_enter_suspend(void)
 {
-#ifdef CONFIG_MACH_N1
+#ifdef CONFIG_MACH_N1_DISABLED_by_xdajog
 	/* FIXME : set LP1 when the device is in call */
 	if (Is_call_active() || !gpio_get_value(GPIO_ALC_INT)
 				|| Is_proximitysensor_active())

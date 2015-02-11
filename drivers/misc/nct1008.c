@@ -412,6 +412,7 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 			data->pdata->register_callbacks(&data->callbacks);
 
 #if defined(CONFIG_MACH_N1)
+/* DISABLED BY xdajog:
 	g_client = client;
 	data->hwmon_dev = hwmon_device_register(&client->dev);
 	if (IS_ERR(data->hwmon_dev)) {
@@ -420,7 +421,7 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 			"failed\n", __func__);
 		goto error;
 	}
-
+*/
 	if (device_create_file(data->hwmon_dev,
 				&dev_attr_temp) < 0) {
 		pr_err("Failed to create device file(%s)!\n",
