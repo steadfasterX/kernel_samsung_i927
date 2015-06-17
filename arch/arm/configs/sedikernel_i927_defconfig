@@ -3,7 +3,7 @@
 # Linux/arm 3.1.10 Kernel Configuration
 #
 CONFIG_LOCALVERSION_AUTO=n
-CONFIG_LOCALVERSION="-sediKERNEL-v1.0 by xdajog@droiddev"
+CONFIG_LOCALVERSION="-sediKERNEL-v1.0"
 
 CONFIG_ARM=y
 CONFIG_HAVE_PWM=y
